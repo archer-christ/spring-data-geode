@@ -17,22 +17,27 @@
 
 package org.springframework.data.gemfire.config.annotation;
 
+import static org.springframework.data.gemfire.util.CollectionUtils.nullSafeList;
+
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.data.gemfire.CacheFactoryBean;
 
 /**
- * Spring {@link Configuration} class used to configure, construct and initialize
- * a GemFire peer {@link org.apache.geode.cache.Cache} instance in a Spring application context.
+ * Spring {@link Configuration} class used to construct, configure and initialize
+ * a peer {@link org.apache.geode.cache.Cache} instance in a Spring application context.
  *
  * @author John Blum
+ * @see org.apache.geode.cache.Cache
  * @see org.springframework.context.annotation.Bean
  * @see org.springframework.context.annotation.Configuration
  * @see org.springframework.data.gemfire.config.annotation.AbstractCacheConfiguration
- * @see org.apache.geode.cache.Cache
  * @since 1.9.0
  */
 @Configuration
@@ -52,6 +57,14 @@ public class PeerCacheConfiguration extends AbstractCacheConfiguration {
     private Integer messageSyncInterval;
     private Integer searchTimeout;
 
+    @Autowired(required = false)
+    private List<PeerCacheConfigurer> peerCacheConfigurers = Collections.emptyList();
+
+    private final PeerCacheConfigurer compositePeerCacheConfigurer = (beanName, cacheFactoryBean) ->  {
+        nullSafeList(this.peerCacheConfigurers).forEach(peerCacheConfigurer ->
+            peerCacheConfigurer.configure(beanName, cacheFactoryBean));
+    };
+
     @Bean
     public CacheFactoryBean gemfireCache() {
         CacheFactoryBean gemfireCache = constructCacheFactoryBean();
@@ -63,6 +76,8 @@ public class PeerCacheConfiguration extends AbstractCacheConfiguration {
         gemfireCache.setSearchTimeout(searchTimeout());
         gemfireCache.setUseBeanFactoryLocator(useBeanFactoryLocator());
         gemfireCache.setUseClusterConfiguration(useClusterConfiguration());
+
+        this.compositePeerCacheConfigurer.configure("gemfireCache", gemfireCache);
 
         return gemfireCache;
     }

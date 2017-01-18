@@ -17,6 +17,10 @@
 
 package org.springframework.data.gemfire.config.annotation;
 
+import static org.springframework.data.gemfire.util.CollectionUtils.nullSafeList;
+
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +29,7 @@ import org.apache.geode.cache.InterestRegistrationListener;
 import org.apache.geode.cache.server.CacheServer;
 import org.apache.geode.cache.server.ClientSubscriptionConfig;
 import org.apache.geode.cache.server.ServerLoadProbe;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.AnnotationMetadata;
@@ -64,6 +69,9 @@ public class CacheServerConfiguration extends PeerCacheConfiguration {
 	private Integer socketBufferSize;
 	private Integer subscriptionCapacity;
 
+	@Autowired(required = false)
+	private List<CacheServerConfigurer> cacheServerConfigurers = Collections.emptyList();
+
 	private Long loadPollInterval;
 
 	private ServerLoadProbe serverLoadProbe;
@@ -75,6 +83,11 @@ public class CacheServerConfiguration extends PeerCacheConfiguration {
 	private String subscriptionDiskStoreName;
 
 	private SubscriptionEvictionPolicy subscriptionEvictionPolicy;
+
+	private final CacheServerConfigurer compositeCacheServerConfigurer = (beanName, cacheServerFactoryBean) -> {
+		nullSafeList(this.cacheServerConfigurers).forEach(cacheServerConfigurer ->
+			cacheServerConfigurer.configure(beanName, cacheServerFactoryBean));
+	};
 
 	@Bean
 	public CacheServerFactoryBean gemfireCacheServer(Cache gemfireCache) {
@@ -97,6 +110,8 @@ public class CacheServerConfiguration extends PeerCacheConfiguration {
 		gemfireCacheServer.setSubscriptionCapacity(subscriptionCapacity());
 		gemfireCacheServer.setSubscriptionDiskStore(subscriptionDiskStoreName());
 		gemfireCacheServer.setSubscriptionEvictionPolicy(subscriptionEvictionPolicy());
+
+		this.compositeCacheServerConfigurer.configure("gemfireCacheServer", gemfireCacheServer);
 
 		return gemfireCacheServer;
 	}

@@ -18,11 +18,11 @@
 package org.springframework.data.gemfire.config.annotation.support;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -44,13 +44,15 @@ import org.springframework.util.StringUtils;
  *
  * @author John Blum
  * @see org.springframework.beans.factory.BeanFactory
- * @see org.springframework.beans.factory.BeanFactoryAware
+ * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
+ * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
  * @see org.springframework.context.annotation.ImportBeanDefinitionRegistrar
  * @see org.springframework.data.gemfire.config.annotation.AbstractCacheConfiguration
  * @since 1.9.0
  */
 @SuppressWarnings("unused")
-public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanDefinitionRegistrar, BeanFactoryAware {
+public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnotationConfigSupport
+		implements ImportBeanDefinitionRegistrar {
 
 	public static final Integer DEFAULT_PORT = 0;
 	public static final String DEFAULT_HOST = "localhost";
@@ -58,8 +60,6 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 	@Autowired
 	@SuppressWarnings("all")
 	private AbstractCacheConfiguration cacheConfiguration;
-
-	private BeanFactory beanFactory;
 
 	/**
 	 * Returns a reference to an instance of the {@link AbstractCacheConfiguration} class used to configure
@@ -72,7 +72,7 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 	 */
 	@SuppressWarnings("unchecked")
 	protected <T extends AbstractCacheConfiguration> T cacheConfiguration() {
-		Assert.state(cacheConfiguration != null, "AbstractCacheConfiguration was not properly initialized");
+		Assert.state(cacheConfiguration != null, "AbstractCacheConfiguration was not properly configured");
 		return (T) this.cacheConfiguration;
 	}
 
@@ -108,31 +108,11 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 	}
 
 	/**
-	 * @inheritDoc
-	 */
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-		this.beanFactory = beanFactory;
-	}
-
-	/**
-	 * Returns a reference to the Spring {@link BeanFactory}.
-	 *
-	 * @return a reference to the Spring {@link BeanFactory}.
-	 * @throws IllegalStateException if the Spring {@link BeanFactory} was not properly initialized.
-	 * @see org.springframework.beans.factory.BeanFactory
-	 */
-	protected BeanFactory getBeanFactory() {
-		Assert.state(this.beanFactory != null, "BeanFactory was not properly initialized");
-		return this.beanFactory;
-	}
-
-	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	public final void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
-		BeanDefinitionRegistry registry) {
+			BeanDefinitionRegistry registry) {
 
 		if (isAnnotationPresent(importingClassMetadata)) {
 			Map<String, Object> annotationAttributes = getAnnotationAttributes(importingClassMetadata);
@@ -144,12 +124,12 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 	/* (non-Javadoc) */
 	@SuppressWarnings("unused")
 	protected void registerBeanDefinitions(AnnotationMetadata importingClassMetaData,
-		Map<String, Object> annotationAttributes, BeanDefinitionRegistry registry) {
+			Map<String, Object> annotationAttributes, BeanDefinitionRegistry registry) {
 	}
 
 	/* (non-Javadoc) */
 	protected void setGemFireProperties(AnnotationMetadata importingClassMetadata,
-		Map<String, Object> annotationAttributes, BeanDefinitionRegistry registry) {
+			Map<String, Object> annotationAttributes, BeanDefinitionRegistry registry) {
 
 		Properties gemfireProperties = toGemFireProperties(annotationAttributes);
 
@@ -183,10 +163,10 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 
 	/* (non-Javadoc) */
 	protected void registerGemFirePropertiesBeanPostProcessor(BeanDefinitionRegistry registry,
-		Properties customGemFireProperties) {
+			Properties customGemFireProperties) {
 
-		BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(
-			GemFirePropertiesBeanPostProcessor.class);
+		BeanDefinitionBuilder builder =
+			BeanDefinitionBuilder.genericBeanDefinition(GemFirePropertiesBeanPostProcessor.class);
 
 		builder.addConstructorArgValue(customGemFireProperties);
 
@@ -200,7 +180,7 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 
 	/* (non-Javadoc) */
 	protected String generateBeanName() {
-		return generateBeanName(getAnnotationTypeSimpleName());
+		return generateBeanName(getAnnotationType());
 	}
 
 	/* (non-Javadoc) */
@@ -228,11 +208,11 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 	 * @return a Spring managed bean instance for the given, required {@link Class} type, or {@literal null}
 	 * if no bean instance of the given, required {@link Class} type could be found.
 	 * @throws BeansException if the Spring manage bean of the required {@link Class} type could not be resolved.
-	 * @see #getBeanFactory()
+	 * @see #beanFactory()
 	 */
 	@SuppressWarnings("unchecked")
 	protected <T> T resolveBean(Class<T> beanType) {
-		BeanFactory beanFactory = getBeanFactory();
+		BeanFactory beanFactory = beanFactory();
 
 		if (beanFactory instanceof AutowireCapableBeanFactory) {
 			AutowireCapableBeanFactory autowiringBeanFactory = (AutowireCapableBeanFactory) beanFactory;
@@ -252,7 +232,7 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 
 	/* (non-Javadoc) */
 	protected String resolveHost(String hostname, String defaultHostname) {
-		return (StringUtils.hasText(hostname) ? hostname : defaultHostname);
+		return Optional.ofNullable(hostname).filter(StringUtils::hasText).orElse(defaultHostname);
 	}
 
 	/* (non-Javadoc) */
@@ -262,7 +242,7 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 
 	/* (non-Javadoc) */
 	protected Integer resolvePort(Integer port, Integer defaultPort) {
-		return (port != null ? port : defaultPort);
+		return Optional.ofNullable(port).orElse(defaultPort);
 	}
 
 	/**
@@ -286,7 +266,7 @@ public abstract class EmbeddedServiceConfigurationSupport implements ImportBeanD
 		 * @see java.util.Properties
 		 */
 		protected GemFirePropertiesBeanPostProcessor(Properties gemfireProperties) {
-			Assert.notEmpty(gemfireProperties, "GemFire Properties must not be null or empty");
+			Assert.notEmpty(gemfireProperties, "GemFire Properties are required");
 			this.gemfireProperties = gemfireProperties;
 		}
 

@@ -17,9 +17,14 @@
 
 package org.springframework.data.gemfire.config.annotation;
 
+import static org.springframework.data.gemfire.util.CollectionUtils.nullSafeList;
+
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.context.annotation.Bean;
@@ -33,14 +38,14 @@ import org.springframework.data.gemfire.support.ConnectionEndpoint;
 import org.springframework.data.gemfire.support.ConnectionEndpointList;
 
 /**
- * Spring {@link Configuration} class used to configure, construct and initialize
- * a GemFire {@link org.apache.geode.cache.client.ClientCache} instance in a Spring application context.
+ * Spring {@link Configuration} class used to construct, configure and initialize
+ * a {@link org.apache.geode.cache.client.ClientCache} instance in a Spring application context.
  *
  * @author John Blum
+ * @see org.apache.geode.cache.client.ClientCache
  * @see org.springframework.context.annotation.Bean
  * @see org.springframework.context.annotation.Configuration
  * @see org.springframework.data.gemfire.config.annotation.AbstractCacheConfiguration
- * @see org.apache.geode.cache.client.ClientCache
  * @since 1.0.0
  */
 @Configuration
@@ -78,11 +83,23 @@ public class ClientCacheConfiguration extends AbstractCacheConfiguration {
 	private Iterable<ConnectionEndpoint> locators;
 	private Iterable<ConnectionEndpoint> servers;
 
+	@Autowired(required = false)
+	private List<ClientCacheConfigurer> clientCacheConfigurers = Collections.emptyList();
+
 	private Long idleTimeout;
 	private Long pingInterval;
 
 	private String durableClientId;
 	private String serverGroup;
+
+	private final ClientCacheConfigurer compositeClientCacheConfigurer = new ClientCacheConfigurer() {
+		@Override
+		public void configure(String beanName, ClientCacheFactoryBean clientCacheFactoryBean) {
+			for (ClientCacheConfigurer clientCacheConfigurer : nullSafeList(clientCacheConfigurers)) {
+				clientCacheConfigurer.configure(beanName, clientCacheFactoryBean);
+			}
+		}
+	};
 
 	@Bean
 	public ClientCacheFactoryBean gemfireCache() {
@@ -112,6 +129,8 @@ public class ClientCacheConfiguration extends AbstractCacheConfiguration {
 		gemfireCache.setSubscriptionMessageTrackingTimeout(subscriptionMessageTrackingTimeout());
 		gemfireCache.setSubscriptionRedundancy(subscriptionRedundancy());
 		gemfireCache.setThreadLocalConnections(threadLocalConnections());
+
+		this.compositeClientCacheConfigurer.configure("gemfireCache", gemfireCache);
 
 		return gemfireCache;
 	}
