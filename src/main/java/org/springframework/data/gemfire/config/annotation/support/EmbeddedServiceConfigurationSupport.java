@@ -17,6 +17,8 @@
 
 package org.springframework.data.gemfire.config.annotation.support;
 
+import static org.springframework.data.gemfire.util.RuntimeExceptionFactory.newIllegalStateException;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -43,11 +45,13 @@ import org.springframework.util.StringUtils;
  * of Pivotal GemFire and Apache Geode embedded services.
  *
  * @author John Blum
+ * @see java.util.Properties
  * @see org.springframework.beans.factory.BeanFactory
  * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
  * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
  * @see org.springframework.context.annotation.ImportBeanDefinitionRegistrar
  * @see org.springframework.data.gemfire.config.annotation.AbstractCacheConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.support.AbstractAnnotationConfigSupport
  * @since 1.9.0
  */
 @SuppressWarnings("unused")
@@ -72,39 +76,8 @@ public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnota
 	 */
 	@SuppressWarnings("unchecked")
 	protected <T extends AbstractCacheConfiguration> T cacheConfiguration() {
-		Assert.state(cacheConfiguration != null, "AbstractCacheConfiguration was not properly configured");
-		return (T) this.cacheConfiguration;
-	}
-
-	/**
-	 * Returns the configured GemFire cache application annotation type
-	 * (e.g. {@link org.springframework.data.gemfire.config.annotation.ClientCacheApplication}
-	 * or {@link org.springframework.data.gemfire.config.annotation.PeerCacheApplication}.
-	 *
-	 * @return an {@link Class annotation} defining the GemFire cache application type.
-	 */
-	protected abstract Class getAnnotationType();
-
-	/**
-	 * Returns the fully-qualified class name of the GemFire cache application annotation type.
-	 *
-	 * @return a fully-qualified class name of the GemFire cache application annotation type.
-	 * @see java.lang.Class#getName()
-	 * @see #getAnnotationType()
-	 */
-	protected String getAnnotationTypeName() {
-		return getAnnotationType().getName();
-	}
-
-	/**
-	 * Returns the simple class name of the GemFire cache application annotation type.
-	 *
-	 * @return the simple class name of the GemFire cache application annotation type.
-	 * @see java.lang.Class#getSimpleName()
-	 * @see #getAnnotationType()
-	 */
-	protected String getAnnotationTypeSimpleName() {
-		return getAnnotationType().getSimpleName();
+		return Optional.ofNullable((T) this.cacheConfiguration)
+			.orElseThrow(() -> newIllegalStateException("AbstractCacheConfiguration was not properly configured"));
 	}
 
 	/**

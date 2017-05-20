@@ -85,7 +85,7 @@ public class CacheServerConfiguration extends PeerCacheConfiguration {
 	private SubscriptionEvictionPolicy subscriptionEvictionPolicy;
 
 	private final CacheServerConfigurer compositeCacheServerConfigurer = (beanName, cacheServerFactoryBean) -> {
-		nullSafeList(this.cacheServerConfigurers).forEach(cacheServerConfigurer ->
+		nullSafeList(cacheServerConfigurers).forEach(cacheServerConfigurer ->
 			cacheServerConfigurer.configure(beanName, cacheServerFactoryBean));
 	};
 

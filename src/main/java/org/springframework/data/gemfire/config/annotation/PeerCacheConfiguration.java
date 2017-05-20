@@ -61,7 +61,7 @@ public class PeerCacheConfiguration extends AbstractCacheConfiguration {
     private List<PeerCacheConfigurer> peerCacheConfigurers = Collections.emptyList();
 
     private final PeerCacheConfigurer compositePeerCacheConfigurer = (beanName, cacheFactoryBean) ->  {
-        nullSafeList(this.peerCacheConfigurers).forEach(peerCacheConfigurer ->
+        nullSafeList(peerCacheConfigurers).forEach(peerCacheConfigurer ->
             peerCacheConfigurer.configure(beanName, cacheFactoryBean));
     };
 

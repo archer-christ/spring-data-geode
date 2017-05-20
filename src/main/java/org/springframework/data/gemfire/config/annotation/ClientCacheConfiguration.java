@@ -92,13 +92,9 @@ public class ClientCacheConfiguration extends AbstractCacheConfiguration {
 	private String durableClientId;
 	private String serverGroup;
 
-	private final ClientCacheConfigurer compositeClientCacheConfigurer = new ClientCacheConfigurer() {
-		@Override
-		public void configure(String beanName, ClientCacheFactoryBean clientCacheFactoryBean) {
-			for (ClientCacheConfigurer clientCacheConfigurer : nullSafeList(clientCacheConfigurers)) {
-				clientCacheConfigurer.configure(beanName, clientCacheFactoryBean);
-			}
-		}
+	private final ClientCacheConfigurer compositeClientCacheConfigurer = (beanName, clientCacheFactoryBean) -> {
+		nullSafeList(clientCacheConfigurers).forEach(clientCacheConfigurer ->
+			clientCacheConfigurer.configure(beanName, clientCacheFactoryBean));
 	};
 
 	@Bean

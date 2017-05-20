@@ -17,6 +17,10 @@
 
 package org.springframework.data.gemfire.config.annotation.support;
 
+import static org.springframework.data.gemfire.util.RuntimeExceptionFactory.newIllegalStateException;
+
+import java.util.Optional;
+
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanFactory;
@@ -34,7 +38,6 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
 import org.springframework.expression.spel.support.StandardTypeLocator;
-import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -47,9 +50,12 @@ import org.springframework.util.StringUtils;
  * @see org.springframework.beans.factory.BeanClassLoaderAware
  * @see org.springframework.beans.factory.BeanFactory
  * @see org.springframework.beans.factory.BeanFactoryAware
+ * @see org.springframework.beans.factory.config.ConfigurableBeanFactory
  * @see org.springframework.beans.factory.support.AbstractBeanDefinition
  * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
  * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
+ * @see org.springframework.core.convert.ConversionService
+ * @see org.springframework.expression.EvaluationContext
  * @since 1.9.0
  */
 @SuppressWarnings("unused")
@@ -123,6 +129,37 @@ public abstract class AbstractAnnotationConfigSupport
 	}
 
 	/**
+	 * Returns the configured GemFire cache application annotation type
+	 * (e.g. {@link org.springframework.data.gemfire.config.annotation.ClientCacheApplication}
+	 * or {@link org.springframework.data.gemfire.config.annotation.PeerCacheApplication}.
+	 *
+	 * @return an {@link Class annotation} defining the GemFire cache application type.
+	 */
+	protected abstract Class getAnnotationType();
+
+	/**
+	 * Returns the fully-qualified class name of the GemFire cache application annotation type.
+	 *
+	 * @return a fully-qualified class name of the GemFire cache application annotation type.
+	 * @see java.lang.Class#getName()
+	 * @see #getAnnotationType()
+	 */
+	protected String getAnnotationTypeName() {
+		return getAnnotationType().getName();
+	}
+
+	/**
+	 * Returns the simple class name of the GemFire cache application annotation type.
+	 *
+	 * @return the simple class name of the GemFire cache application annotation type.
+	 * @see java.lang.Class#getSimpleName()
+	 * @see #getAnnotationType()
+	 */
+	protected String getAnnotationTypeSimpleName() {
+		return getAnnotationType().getSimpleName();
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	@Override
@@ -157,8 +194,8 @@ public abstract class AbstractAnnotationConfigSupport
 	 * @see org.springframework.beans.factory.BeanFactory
 	 */
 	protected BeanFactory beanFactory() {
-		Assert.state(this.beanFactory != null, "BeanFactory was not properly configured");
-		return this.beanFactory;
+		return Optional.ofNullable(this.beanFactory)
+			.orElseThrow(() -> newIllegalStateException("BeanFactory was not properly configured"));
 	}
 
 	/**
