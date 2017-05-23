@@ -22,23 +22,27 @@ import org.springframework.data.gemfire.server.CacheServerFactoryBean;
 
 /**
  * The {@link CacheServerConfigurer} interface defines a contract for implementations to customize the configuration
- * of a {@link CacheServerFactoryBean} used to construct, configure and initialize a {@link CacheServer} instance.
+ * of a {@link CacheServerFactoryBean} used to construct, configure and initialize an instance of a {@link CacheServer}.
  *
  * @author John Blum
  * @see org.apache.geode.cache.server.CacheServer
+ * @see org.springframework.data.gemfire.config.annotation.CacheServerApplication
+ * @see org.springframework.data.gemfire.config.annotation.EnableCacheServer
+ * @see org.springframework.data.gemfire.config.annotation.EnableCacheServers
+ * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.server.CacheServerFactoryBean
  * @since 1.9.0
  */
 public interface CacheServerConfigurer {
 
 	/**
-	 * Callback method providing a reference to the SDG {@link CacheServerFactoryBean} used to construct, configure
-	 * and initialize an instance of the GemFire/Geode {@link CacheServer}.
+	 * Configuration callback method providing a reference to a {@link CacheServerFactoryBean} used to construct,
+	 * configure and initialize an instance of {@link CacheServer}.
 	 *
-	 * @param beanName name of GemFire/Geode {@link CacheServer} bean declared in the Spring context.
-	 * @param cacheServerFactoryBean reference to the {@link CacheServerFactoryBean}.
+	 * @param beanName name of {@link CacheServer} bean declared in the Spring application context.
+	 * @param bean reference to the {@link CacheServerFactoryBean}.
 	 * @see org.springframework.data.gemfire.server.CacheServerFactoryBean
 	 */
-	void configure(String beanName, CacheServerFactoryBean cacheServerFactoryBean);
+	void configure(String beanName, CacheServerFactoryBean bean);
 
 }

@@ -35,6 +35,8 @@ import org.springframework.context.annotation.Import;
  * @author John Blum
  * @see org.springframework.context.annotation.Import
  * @see org.springframework.data.gemfire.config.annotation.DiskStoresConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfigurer
+ * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnableDiskStore
  * @see org.apache.geode.cache.DiskStore
  * @see org.apache.geode.cache.Region
@@ -44,7 +46,7 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import(DiskStoresConfiguration.class)
+@Import({ DiskStoresConfiguration.class, DiskStoreConfigurerBeanPostProcessorConfiguration.class })
 @SuppressWarnings({ "unused" })
 public @interface EnableDiskStores {
 

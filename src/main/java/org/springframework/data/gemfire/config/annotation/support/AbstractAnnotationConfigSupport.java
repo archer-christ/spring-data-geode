@@ -76,7 +76,7 @@ public abstract class AbstractAnnotationConfigSupport
 	 * @return a boolean value indicating whether the given {@link Object} has value.
 	 */
 	protected static boolean hasValue(Object value) {
-		return (value != null);
+		return Optional.ofNullable(value).isPresent();
 	}
 
 	/**
@@ -87,7 +87,7 @@ public abstract class AbstractAnnotationConfigSupport
 	 * @return a boolean value indicating whether the given {@link Number} has value.
 	 */
 	protected static boolean hasValue(Number value) {
-		return (value != null && value.doubleValue() != 0.0d);
+		return Optional.ofNullable(value).filter(it -> it.doubleValue() != 0.0d).isPresent();
 	}
 
 	/**

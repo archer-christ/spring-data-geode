@@ -22,23 +22,24 @@ import org.springframework.data.gemfire.CacheFactoryBean;
 
 /**
  * The {@link PeerCacheConfigurer} interface defines a contract for implementations to customize the configuration
- * of a {@link CacheFactoryBean} used to construct, configure and initialize a peer {@link Cache} instance.
+ * of a {@link CacheFactoryBean} used to construct, configure and initialize an instance of a peer {@link Cache}.
  *
  * @author John Blum
- * @see org.springframework.data.gemfire.CacheFactoryBean
  * @see org.apache.geode.cache.Cache
- * @since 1.8.0
+ * @see org.springframework.data.gemfire.CacheFactoryBean
+ * @see org.springframework.data.gemfire.config.annotation.PeerCacheApplication
+ * @since 1.9.0
  */
 public interface PeerCacheConfigurer {
 
 	/**
-	 * Callback method providing a reference to the SDG {@link CacheFactoryBean} used to construct, configure
-	 * and initialize an instance of the GemFire/Geode {@link Cache}.
+	 * Configuration callback method providing a reference to a {@link CacheFactoryBean} used to construct,
+	 * configure and initialize an instance of a peer {@link Cache}.
 	 *
-	 * @param beanName name of GemFire/Geode {@link Cache} bean declared in the Spring context.
-	 * @param cacheFactoryBean reference to the {@link CacheFactoryBean}.
+	 * @param beanName name of peer {@link Cache} bean declared in the Spring application context.
+	 * @param bean reference to the {@link CacheFactoryBean}.
 	 * @see org.springframework.data.gemfire.CacheFactoryBean
 	 */
-	void configure(String beanName, CacheFactoryBean cacheFactoryBean);
+	void configure(String beanName, CacheFactoryBean bean);
 
 }

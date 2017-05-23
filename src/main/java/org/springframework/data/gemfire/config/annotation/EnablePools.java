@@ -33,13 +33,15 @@ import org.springframework.context.annotation.Import;
  * @author John Blum
  * @see org.springframework.data.gemfire.config.annotation.AddPoolsConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnablePool
+ * @see org.springframework.data.gemfire.config.annotation.PoolConfigurer
+ * @see org.springframework.data.gemfire.config.annotation.PoolConfigurerBeanPostProcessorConfiguration
  * @since 1.9.0
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import(AddPoolsConfiguration.class)
+@Import({ AddPoolsConfiguration.class, PoolConfigurerBeanPostProcessorConfiguration.class })
 @SuppressWarnings("unused")
 public @interface EnablePools {
 

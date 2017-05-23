@@ -19,6 +19,9 @@ package org.springframework.data.gemfire.config.annotation;
 
 import java.util.Map;
 
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -26,15 +29,23 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.data.gemfire.config.xml.GemfireConstants;
 import org.springframework.data.gemfire.server.CacheServerFactoryBean;
+import org.springframework.util.StringUtils;
 
 /**
  * The {@link AddCacheServerConfiguration} class is a Spring {@link ImportBeanDefinitionRegistrar} that registers
  * a {@link CacheServerFactoryBean} definition for the {@link org.apache.geode.cache.server.CacheServer}
- * configuration meta-data defined in {@link EnableCacheServer}.
+ * configuration meta-data defined in {@link EnableCacheServer} annotation.
  *
  * @author John Blum
+ * @see org.apache.geode.cache.server.CacheServer
+ * @see org.springframework.beans.factory.config.BeanDefinition
+ * @see org.springframework.beans.factory.config.BeanDefinitionHolder
+ * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
+ * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
  * @see org.springframework.context.annotation.ImportBeanDefinitionRegistrar
+ * @see org.springframework.core.type.AnnotationMetadata
  * @see org.springframework.data.gemfire.config.annotation.EnableCacheServer
+ * @see org.springframework.data.gemfire.server.CacheServerFactoryBean
  * @since 1.9.0
  */
 public class AddCacheServerConfiguration implements ImportBeanDefinitionRegistrar {
@@ -84,6 +95,25 @@ public class AddCacheServerConfiguration implements ImportBeanDefinitionRegistra
 		builder.addPropertyValue("subscriptionDiskStore", enableCacheServerAttributes.get("subscriptionDiskStoreName"));
 		builder.addPropertyValue("subscriptionEvictionPolicy", enableCacheServerAttributes.get("subscriptionEvictionPolicy"));
 
-		BeanDefinitionReaderUtils.registerWithGeneratedName(builder.getBeanDefinition(), registry);
+		registerCacheServerFactoryBeanDefinition(builder.getBeanDefinition(),
+			(String) enableCacheServerAttributes.get("name"), registry);
+	}
+
+	/* (non-Javadoc) */
+	protected void registerCacheServerFactoryBeanDefinition(AbstractBeanDefinition beanDefinition, String beanName,
+			BeanDefinitionRegistry registry) {
+
+		if (StringUtils.hasText(beanName)) {
+			BeanDefinitionReaderUtils.registerBeanDefinition(
+				newBeanDefinitionHolder(beanDefinition, beanName), registry);
+		}
+		else {
+			BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, registry);
+		}
+	}
+
+	/* (non-Javadoc) */
+	protected BeanDefinitionHolder newBeanDefinitionHolder(BeanDefinition beanDefinition, String beanName) {
+		return new BeanDefinitionHolder(beanDefinition, beanName);
 	}
 }

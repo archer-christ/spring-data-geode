@@ -22,23 +22,24 @@ import org.springframework.data.gemfire.client.ClientCacheFactoryBean;
 
 /**
  * The {@link ClientCacheConfigurer} interface defines a contract for implementations to customize the configuration
- * of a {@link ClientCacheFactoryBean} used to construct, configure and initialize a {@link ClientCache} instance.
+ * of a {@link ClientCacheFactoryBean} used to construct, configure and initialize an instance of a {@link ClientCache}.
  *
  * @author John Blum
  * @see org.apache.geode.cache.client.ClientCache
  * @see org.springframework.data.gemfire.client.ClientCacheFactoryBean
+ * @see org.springframework.data.gemfire.config.annotation.ClientCacheApplication
  * @since 1.9.0
  */
 public interface ClientCacheConfigurer {
 
 	/**
-	 * Callback method providing a reference to the SDG {@link ClientCacheFactoryBean} used to construct, configure
-	 * and initialize an instance of the GemFire/Geode {@link ClientCache}.
+	 * Configuration callback method providing a reference to a {@link ClientCacheFactoryBean} used to construct,
+	 * configure and initialize an instance of {@link ClientCache}.
 	 *
-	 * @param beanName name of GemFire/Geode {@link ClientCache} bean declared in the Spring context.
-	 * @param clientCacheFactoryBean reference to the {@link ClientCacheFactoryBean}.
+	 * @param beanName name of {@link ClientCache} bean declared in the Spring application context.
+	 * @param bean reference to the {@link ClientCacheFactoryBean}.
 	 * @see org.springframework.data.gemfire.CacheFactoryBean
 	 */
-	void configure(String beanName, ClientCacheFactoryBean clientCacheFactoryBean);
+	void configure(String beanName, ClientCacheFactoryBean bean);
 
 }

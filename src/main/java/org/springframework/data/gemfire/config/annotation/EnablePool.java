@@ -40,16 +40,18 @@ import org.springframework.data.gemfire.GemfireUtils;
  * annotation.
  *
  * @author John Blum
- * @see org.springframework.data.gemfire.config.annotation.AddPoolConfiguration
  * @see org.apache.geode.cache.client.Pool
  * @see org.apache.geode.cache.client.PoolFactory
+ * @see org.springframework.data.gemfire.config.annotation.AddPoolConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.PoolConfigurer
+ * @see org.springframework.data.gemfire.config.annotation.PoolConfigurerBeanPostProcessorConfiguration
  * @since 1.9.0
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import(AddPoolConfiguration.class)
+@Import({ AddPoolConfiguration.class, PoolConfigurerBeanPostProcessorConfiguration.class })
 @SuppressWarnings("unused")
 public @interface EnablePool {
 

@@ -53,7 +53,7 @@ import org.springframework.data.gemfire.server.SubscriptionEvictionPolicy;
 @Inherited
 @Documented
 @Configuration
-@Import(CacheServerConfiguration.class)
+@Import({ CacheServerConfiguration.class, CacheServerConfigurerBeanPostProcessorConfiguration.class })
 @SuppressWarnings("unused")
 public @interface CacheServerApplication {
 
