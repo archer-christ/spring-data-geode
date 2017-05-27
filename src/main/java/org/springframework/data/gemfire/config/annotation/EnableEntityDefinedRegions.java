@@ -52,7 +52,7 @@ import org.springframework.core.annotation.AliasFor;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import({ IndexConfiguration.class, RegionConfigurerBeanPostProcessorConfiguration.class })
+@Import(IndexConfiguration.class)
 @SuppressWarnings({ "unused" })
 public @interface EnableEntityDefinedRegions {
 

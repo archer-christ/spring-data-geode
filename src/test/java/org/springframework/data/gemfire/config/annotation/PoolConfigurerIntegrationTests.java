@@ -29,21 +29,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.gemfire.client.PoolFactoryBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 /**
- * Integration tests for {@link PoolConfigurerBeanPostProcessorConfiguration}.
+ * Integration tests for {@link PoolConfigurer}.
  *
  * @author John Blum
  * @see org.junit.Test
  * @see org.apache.geode.cache.client.Pool
  * @see org.springframework.context.annotation.Configuration
  * @see org.springframework.data.gemfire.client.PoolFactoryBean
+ * @see org.springframework.data.gemfire.config.annotation.AddPoolConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.AddPoolsConfiguration
  * @see org.springframework.data.gemfire.config.annotation.PoolConfigurer
- * @see org.springframework.data.gemfire.config.annotation.PoolConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnablePool
  * @see org.springframework.data.gemfire.config.annotation.EnablePools
  * @see org.springframework.test.context.ContextConfiguration
@@ -53,7 +53,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 @RunWith(SpringRunner.class)
 @ContextConfiguration
 @SuppressWarnings("unused")
-public class PoolConfigurerBeanPostProcessorConfigurationIntegrationTests {
+public class PoolConfigurerIntegrationTests {
 
 	@Autowired
 	@Qualifier("configurerOne")
@@ -63,10 +63,6 @@ public class PoolConfigurerBeanPostProcessorConfigurationIntegrationTests {
 	@Qualifier("configurerTwo")
 	private TestPoolConfigurer configurerTwo;
 
-	@Autowired
-	@Qualifier("configurerThree")
-	private TestPoolConfigurer configurerThree;
-
 	protected void assertPoolConfigurerCalled(TestPoolConfigurer configurer, String... beanNames) {
 		assertThat(configurer).isNotNull();
 		assertThat(configurer).hasSize(beanNames.length);
@@ -74,22 +70,16 @@ public class PoolConfigurerBeanPostProcessorConfigurationIntegrationTests {
 	}
 
 	@Test
-	public void configurerOneCalledSuccessfully() {
-		assertPoolConfigurerCalled(configurerOne, "poolOne", "poolTwo", "poolThree");
+	public void poolConfigurerOneCalledSuccessfully() {
+		assertPoolConfigurerCalled(this.configurerOne, "poolOne", "poolTwo", "poolThree");
 	}
 
 	@Test
-	public void configurerTwoCalledSuccessfully() {
-		assertPoolConfigurerCalled(configurerTwo, "poolOne", "poolTwo", "poolThree");
-	}
-
-	@Test
-	public void configurerThreeCalledSuccessfully() {
-		assertPoolConfigurerCalled(configurerThree, "poolOne", "poolTwo", "poolThree");
+	public void poolConfigurerTwoCalledSuccessfully() {
+		assertPoolConfigurerCalled(this.configurerTwo, "poolOne", "poolTwo", "poolThree");
 	}
 
 	@Configuration
-	@Import(PoolConfigurerBeanPostProcessorConfiguration.class)
 	@EnablePools(pools = {
 		@EnablePool(name = "poolOne"),
 		@EnablePool(name = "poolTwo"),
@@ -104,11 +94,6 @@ public class PoolConfigurerBeanPostProcessorConfigurationIntegrationTests {
 
 		@Bean
 		TestPoolConfigurer configurerTwo() {
-			return new TestPoolConfigurer();
-		}
-
-		@Bean
-		TestPoolConfigurer configurerThree() {
 			return new TestPoolConfigurer();
 		}
 

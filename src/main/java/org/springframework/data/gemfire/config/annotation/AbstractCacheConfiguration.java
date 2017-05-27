@@ -20,16 +20,19 @@ package org.springframework.data.gemfire.config.annotation;
 import static org.springframework.data.gemfire.CacheFactoryBean.DynamicRegionSupport;
 import static org.springframework.data.gemfire.CacheFactoryBean.JndiDataSource;
 import static org.springframework.data.gemfire.util.CollectionUtils.nullSafeList;
-import static org.springframework.data.gemfire.util.SpringUtils.defaultIfNull;
 
 import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.TransactionListener;
 import org.apache.geode.cache.TransactionWriter;
+import org.apache.geode.cache.client.ClientCache;
+import org.apache.geode.cache.server.CacheServer;
 import org.apache.geode.cache.util.GatewayConflictResolver;
 import org.apache.geode.pdx.PdxSerializer;
 import org.springframework.beans.factory.BeanFactory;
@@ -56,15 +59,20 @@ import org.springframework.util.StringUtils;
 
 /**
  * {@link AbstractCacheConfiguration} is an abstract base class for configuring either a Pivotal GemFire/Apache Geode
- * client or peer-based cache instance using Spring's Java-based, Annotation
- * {@link org.springframework.context.annotation.Configuration} support.
+ * client or peer-based cache instance using Spring's Java-based, Annotation {@link Configuration} support.
  *
- * This class encapsulates configuration settings common to both GemFire peer
- * {@link org.apache.geode.cache.Cache caches} and
- * {@link org.apache.geode.cache.client.ClientCache client caches}.
+ * This class encapsulates configuration settings common to both Pivotal GemFire/Apache Geode
+ * {@link org.apache.geode.cache.Cache peer caches}
+ * and {@link org.apache.geode.cache.client.ClientCache client caches}.
  *
  * @author John Blum
  * @see java.lang.annotation.Annotation
+ * @see java.util.Properties
+ * @see org.apache.geode.cache.Cache
+ * @see org.apache.geode.cache.GemFireCache
+ * @see org.apache.geode.cache.client.ClientCache
+ * @see org.apache.geode.cache.server.CacheServer
+ * @see org.apache.geode.pdx.PdxSerializer
  * @see org.springframework.beans.factory.BeanFactory
  * @see org.springframework.beans.factory.config.BeanDefinition
  * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
@@ -76,6 +84,7 @@ import org.springframework.util.StringUtils;
  * @see org.springframework.core.io.Resource
  * @see org.springframework.core.type.AnnotationMetadata
  * @see org.springframework.data.gemfire.CacheFactoryBean
+ * @see org.springframework.data.gemfire.client.ClientCacheFactoryBean
  * @see org.springframework.data.gemfire.config.annotation.support.AbstractAnnotationConfigSupport
  * @see org.springframework.data.gemfire.config.support.CustomEditorBeanFactoryPostProcessor
  * @see org.springframework.data.gemfire.config.support.DefinedIndexesApplicationListener
@@ -83,7 +92,6 @@ import org.springframework.util.StringUtils;
  * @see org.springframework.data.gemfire.config.support.PdxDiskStoreAwareBeanFactoryPostProcessor
  * @see org.springframework.data.gemfire.mapping.GemfireMappingContext
  * @see org.springframework.data.gemfire.mapping.MappingPdxSerializer
- * @see org.apache.geode.pdx.PdxSerializer
  * @since 1.9.0
  */
 @Configuration
@@ -143,26 +151,30 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	private TransactionWriter transactionWriter;
 
 	/**
-	 * Returns a {@link Properties} object containing GemFire System properties used to configure the GemFire cache.
+	 * Returns a {@link Properties} object containing Pivotal GemFire/Apache Geode properties used to configure
+	 * the Pivotal GemFire/Apache Geode cache.
 	 *
-	 * The name of the GemFire member/node in the cluster is set to a default, pre-defined, descriptive value
-	 * depending on the type of configuration meta-data applied.
+	 * The {@literal name} of the Pivotal GemFire/Apache Geode member/node in the cluster is set to a default,
+	 * pre-defined and descriptive value depending on the type of configuration meta-data applied.
 	 *
-	 * Both 'mcast-port' and 'locators' are to set 0 and empty String respectively, which is necessary
-	 * for {@link org.apache.geode.cache.client.ClientCache cache client}-based applications.  These values
-	 * can be changed for peer cache and cache server applications.
+	 * {@literal mcast-port} is set to {@literal 0} and {@literal locators} is set to an {@link String empty String},
+	 * which is necessary for {@link ClientCache cache client}-based applications.  These values can be changed
+	 * and set accoridingly for {@link Cache peer cache} and {@link CacheServer cache server} applications.
 	 *
-	 * Finally, GemFire's {@literal log-level} System property defaults to {@literal config}.
+	 * Finally, the {@literal log-level} property defaults to {@literal config}.
 	 *
-	 * @return a {@link Properties} object containing GemFire System properties used to configure the GemFire cache.
+	 * @return a {@link Properties} object containing Pivotal GemFire/Apache Geode properties used to configure
+	 * the Pivotal GemFire/Apache Geode cache instance.
 	 * @see <a link="http://gemfire.docs.pivotal.io/docs-gemfire/reference/topics/gemfire_properties.html">GemFire Properties</a>
 	 * @see java.util.Properties
-	 * @see #name()
-	 * @see #logLevel()
 	 * @see #locators()
+	 * @see #logLevel()
+	 * @see #mcastPort()
+	 * @see #name()
 	 */
 	@Bean
 	protected Properties gemfireProperties() {
+
 		PropertiesBuilder gemfireProperties = PropertiesBuilder.create();
 
 		gemfireProperties.setProperty("name", name());
@@ -180,51 +192,77 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	 */
 	@Override
 	public void setImportMetadata(AnnotationMetadata importMetadata) {
+
 		configureInfrastructure(importMetadata);
 		configureCache(importMetadata);
 		configurePdx(importMetadata);
-		configureOther(importMetadata);
+		configureTheRest(importMetadata);
 	}
 
 	/**
-	 * Configures Spring container infrastructure components used by Spring Data GemFire
-	 * to enable GemFire to function properly inside a Spring context.
+	 * Configures Spring container infrastructure components and beans used by Spring Data GemFire
+	 * to enable Pivotal GemFire or Apache Geode to function properly inside a Spring context.
 	 *
 	 * @param importMetadata {@link AnnotationMetadata} containing annotation meta-data
-	 * for the Spring GemFire cache application class.
+	 * for the Spring Data GemFire cache application class.
 	 * @see org.springframework.core.type.AnnotationMetadata
 	 */
 	protected void configureInfrastructure(AnnotationMetadata importMetadata) {
+
 		registerCustomEditorBeanFactoryPostProcessor(importMetadata);
 		registerDefinedIndexesApplicationListener(importMetadata);
 		registerDiskStoreDirectoryBeanPostProcessor(importMetadata);
 	}
 
+	/* (non-Javadoc) */
+	private void registerCustomEditorBeanFactoryPostProcessor(AnnotationMetadata importMetadata) {
+
+		if (CUSTOM_EDITORS_REGISTERED.compareAndSet(false, true)) {
+			register(BeanDefinitionBuilder.rootBeanDefinition(CustomEditorBeanFactoryPostProcessor.class)
+				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE).getBeanDefinition());
+		}
+	}
+
+	/* (non-Javadoc) */
+	private void registerDefinedIndexesApplicationListener(AnnotationMetadata importMetadata) {
+
+		if (DEFINED_INDEXES_APPLICATION_LISTENER_REGISTERED.compareAndSet(false, true)) {
+			register(BeanDefinitionBuilder.rootBeanDefinition(DefinedIndexesApplicationListener.class)
+				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE).getBeanDefinition());
+		}
+	}
+
+	/* (non-Javadoc) */
+	private void registerDiskStoreDirectoryBeanPostProcessor(AnnotationMetadata importMetadata) {
+
+		if (DISK_STORE_DIRECTORY_BEAN_POST_PROCESSOR_REGISTERED.compareAndSet(false, true)) {
+			register(BeanDefinitionBuilder.rootBeanDefinition(DiskStoreDirectoryBeanPostProcessor.class)
+				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE).getBeanDefinition());
+		}
+	}
+
 	/**
-	 * Configures the GemFire cache settings.
+	 * Configures Pivotal GemFire/Apache Geode cache specific settings.
 	 *
-	 * @param importMetadata {@link AnnotationMetadata} containing the cache meta-data used to configure
-	 * the GemFire cache.
+	 * @param importMetadata {@link AnnotationMetadata} containing the cache meta-data used to configure the cache.
 	 * @see org.springframework.core.type.AnnotationMetadata
 	 */
 	protected void configureCache(AnnotationMetadata importMetadata) {
+
 		if (isClientPeerOrServerCacheApplication(importMetadata)) {
+
 			Map<String, Object> cacheMetadataAttributes =
 				importMetadata.getAnnotationAttributes(getAnnotationTypeName());
 
 			setCopyOnRead(Boolean.TRUE.equals(cacheMetadataAttributes.get("copyOnRead")));
 
-			Float criticalHeapPercentage = (Float) cacheMetadataAttributes.get("criticalHeapPercentage");
+			Optional.ofNullable((Float) cacheMetadataAttributes.get("criticalHeapPercentage"))
+				.filter(AbstractAnnotationConfigSupport::hasValue)
+				.ifPresent(this::setCriticalHeapPercentage);
 
-			if (hasValue(criticalHeapPercentage)) {
-				setCriticalHeapPercentage(criticalHeapPercentage);
-			}
-
-			Float evictionHeapPercentage = (Float) cacheMetadataAttributes.get("evictionHeapPercentage");
-
-			if (hasValue(evictionHeapPercentage)) {
-				setEvictionHeapPercentage(evictionHeapPercentage);
-			}
+			Optional.ofNullable((Float) cacheMetadataAttributes.get("evictionHeapPercentage"))
+				.filter(AbstractAnnotationConfigSupport::hasValue)
+				.ifPresent(this::setEvictionHeapPercentage);
 
 			setLogLevel((String) cacheMetadataAttributes.get("logLevel"));
 			setName((String) cacheMetadataAttributes.get("name"));
@@ -233,17 +271,19 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	/**
-	 * Configures GemFire's PDX Serialization components.
+	 * Configures Pivotal GemFire/Apache Geode cache PDX Serialization.
 	 *
-	 * @param importMetadata {@link AnnotationMetadata} containing PDX meta-data used to configure
-	 * the GemFire cache with PDX de/serialization capabilities.
+	 * @param importMetadata {@link AnnotationMetadata} containing PDX meta-data used to configure the cache
+	 * with PDX de/serialization capabilities.
 	 * @see org.springframework.core.type.AnnotationMetadata
 	 * @see <a href="http://gemfire.docs.pivotal.io/docs-gemfire/latest/developing/data_serialization/gemfire_pdx_serialization.html">GemFire PDX Serialization</a>
 	 */
 	protected void configurePdx(AnnotationMetadata importMetadata) {
+
 		String enablePdxTypeName = EnablePdx.class.getName();
 
 		if (importMetadata.hasAnnotation(enablePdxTypeName)) {
+
 			Map<String, Object> enablePdxAttributes = importMetadata.getAnnotationAttributes(enablePdxTypeName);
 
 			setPdxDiskStoreName((String) enablePdxAttributes.get("diskStoreName"));
@@ -257,80 +297,95 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	/**
-	 * Callback method to configure other, specific GemFire cache configuration settings.
+	 * Resolves the {@link PdxSerializer} used to configure the cache for PDX De/Serialization.
 	 *
-	 * @param importMetadata {@link AnnotationMetadata} containing meta-data used to configure
-	 * the GemFire cache.
-	 * @see org.springframework.core.type.AnnotationMetadata
+	 * @param pdxSerializerBeanName {@link String} containing the name of a Spring bean
+	 * implementing the {@link PdxSerializer} interface.
+	 * @return the resolved {@link PdxSerializer} from configuration.
+	 * @see org.apache.geode.pdx.PdxSerializer
+	 * @see #newPdxSerializer(BeanFactory)
+	 * @see #beanFactory()
 	 */
-	protected void configureOther(AnnotationMetadata importMetadata) {
-	}
-
-	/* (non-Javadoc) */
 	protected PdxSerializer resolvePdxSerializer(String pdxSerializerBeanName) {
-		BeanFactory beanFactory = beanFactory();
-		PdxSerializer pdxSerializer = pdxSerializer();
 
-		return (beanFactory.containsBean(pdxSerializerBeanName)
-			? beanFactory.getBean(pdxSerializerBeanName, PdxSerializer.class)
-			: (pdxSerializer != null ? pdxSerializer : newPdxSerializer()));
-	}
-
-	/* (non-Javadoc) */
-	@SuppressWarnings("unchecked")
-	protected <T extends PdxSerializer> T newPdxSerializer() {
 		BeanFactory beanFactory = beanFactory();
 
-		ConversionService conversionService = (beanFactory instanceof ConfigurableBeanFactory
-			? ((ConfigurableBeanFactory) beanFactory).getConversionService() : null);
-
-		return (T) MappingPdxSerializer.create(this.mappingContext, conversionService);
-	}
-
-	/* (non-Javadoc) */
-	protected void registerCustomEditorBeanFactoryPostProcessor(AnnotationMetadata importMetadata) {
-		if (CUSTOM_EDITORS_REGISTERED.compareAndSet(false, true)) {
-			register(BeanDefinitionBuilder.rootBeanDefinition(CustomEditorBeanFactoryPostProcessor.class)
-				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE).getBeanDefinition());
-		}
-	}
-
-	/* (non-Javadoc) */
-	protected void registerDefinedIndexesApplicationListener(AnnotationMetadata importMetadata) {
-		if (DEFINED_INDEXES_APPLICATION_LISTENER_REGISTERED.compareAndSet(false, true)) {
-			register(BeanDefinitionBuilder.rootBeanDefinition(DefinedIndexesApplicationListener.class)
-				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE).getBeanDefinition());
-		}
-	}
-
-	/* (non-Javadoc) */
-	protected void registerDiskStoreDirectoryBeanPostProcessor(AnnotationMetadata importMetadata) {
-		if (DISK_STORE_DIRECTORY_BEAN_POST_PROCESSOR_REGISTERED.compareAndSet(false, true)) {
-			register(BeanDefinitionBuilder.rootBeanDefinition(DiskStoreDirectoryBeanPostProcessor.class)
-				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE).getBeanDefinition());
-		}
-	}
-
-	/* (non-Javadoc) */
-	protected void registerPdxDiskStoreAwareBeanFactoryPostProcessor(AnnotationMetadata importMetadata) {
-		if (StringUtils.hasText(pdxDiskStoreName())) {
-			if (PDX_DISK_STORE_AWARE_BEAN_FACTORY_POST_PROCESSOR_REGISTERED.compareAndSet(false, true)) {
-				register(BeanDefinitionBuilder.rootBeanDefinition(PdxDiskStoreAwareBeanFactoryPostProcessor.class)
-					.setRole(BeanDefinition.ROLE_INFRASTRUCTURE)
-					.addConstructorArgValue(pdxDiskStoreName())
-					.getBeanDefinition());
-			}
-		}
+		return Optional.ofNullable(pdxSerializerBeanName)
+			.filter(beanFactory::containsBean)
+			.map(beanName -> beanFactory.getBean(beanName, PdxSerializer.class))
+			.orElseGet(() -> Optional.ofNullable(pdxSerializer()).orElseGet(() -> newPdxSerializer(beanFactory)));
 	}
 
 	/**
-	 * Constructs a new, initialized instance of the {@link CacheFactoryBean} based on the Spring application's
-	 * GemFire cache type (i.e. client or peer) preference specified via annotation.
+	 * Constructs a new instance of {@link PdxSerializer}.
 	 *
-	 * @param <T> Class type of the {@link CacheFactoryBean}.
-	 * @return a new instance of an appropriate {@link CacheFactoryBean} given the Spring application's
-	 * GemFire cache type preference  (i.e client or peer) specified with the corresponding annotation
-	 * (e.g. {@link ClientCacheApplication} or {@link PeerCacheApplication});
+	 * @param <T> {@link Class} type of the {@link PdxSerializer}.
+	 * @return a new instance of {@link PdxSerializer}.
+	 * @see org.apache.geode.pdx.PdxSerializer
+	 * @see #newPdxSerializer(BeanFactory)
+	 */
+	@SuppressWarnings("unchecked")
+	protected <T extends PdxSerializer> T newPdxSerializer() {
+		return newPdxSerializer(beanFactory());
+	}
+
+	/**
+	 * Constructs a new instance of {@link MappingPdxSerializer}.
+	 *
+	 * @param <T> {@link Class} type of the {@link PdxSerializer}; this method returns a {@link MappingPdxSerializer}.
+	 * @param beanFactory {@link BeanFactory} used to get an instance of {@link ConversionService}
+	 * used by the {@link MappingPdxSerializer}.
+	 * @return a new instance of {@link MappingPdxSerializer}.
+	 * @see org.springframework.data.gemfire.mapping.MappingPdxSerializer
+	 * @see org.springframework.beans.factory.BeanFactory
+	 * @see org.apache.geode.pdx.PdxSerializer
+	 */
+	@SuppressWarnings("unchecked")
+	protected <T extends PdxSerializer> T newPdxSerializer(BeanFactory beanFactory) {
+
+		Optional<ConversionService> conversionService = Optional.ofNullable(beanFactory)
+			.filter(it -> it instanceof ConfigurableBeanFactory)
+			.map(it -> ((ConfigurableBeanFactory) it).getConversionService());
+
+		return (T) MappingPdxSerializer.create(this.mappingContext, conversionService.orElse(null));
+	}
+
+	/* (non-Javadoc) */
+	private void registerPdxDiskStoreAwareBeanFactoryPostProcessor(AnnotationMetadata importMetadata) {
+
+		Optional.ofNullable(pdxDiskStoreName())
+			.filter(StringUtils::hasText)
+			.ifPresent(pdxDiskStoreName -> {
+				if (PDX_DISK_STORE_AWARE_BEAN_FACTORY_POST_PROCESSOR_REGISTERED.compareAndSet(false, true)) {
+					register(BeanDefinitionBuilder.rootBeanDefinition(PdxDiskStoreAwareBeanFactoryPostProcessor.class)
+						.setRole(BeanDefinition.ROLE_INFRASTRUCTURE)
+						.addConstructorArgValue(pdxDiskStoreName)
+						.getBeanDefinition());
+				}
+			});
+	}
+
+	/**
+	 * Callback method allowing developers to configure other cache or application specific configuration settings.
+	 *
+	 * @param importMetadata {@link AnnotationMetadata} containing meta-data used to configure the cache or application.
+	 * @see org.springframework.core.type.AnnotationMetadata
+	 */
+	protected void configureTheRest(AnnotationMetadata importMetadata) {
+	}
+
+	/**
+	 * Constructs a new, initialized instance of {@link CacheFactoryBean} based on the Spring application's
+	 * cache type preference (i.e. client or peer), which is expressed via the appropriate annotation.
+	 *
+	 * Use the {@link ClientCacheApplication} Annotation to construct a {@link ClientCache cache client} application.
+	 *
+	 * Use the {@link PeerCacheApplication} Annotation to construct a {@link Cache peer cache} application.
+	 *
+	 * @param <T> {@link Class} specific sub-type of the {@link CacheFactoryBean}.
+	 * @return a new instance of the appropriate {@link CacheFactoryBean} given the Spring application's
+	 * cache type preference (i.e client or peer),  (e.g. {@link ClientCacheApplication}
+	 * or {@link PeerCacheApplication}).
 	 * @see org.springframework.data.gemfire.client.ClientCacheFactoryBean
 	 * @see org.springframework.data.gemfire.CacheFactoryBean
 	 * @see #configureCacheFactoryBean(CacheFactoryBean)
@@ -341,28 +396,33 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	/**
-	 * Constructs a new, uninitialized instance of the {@link CacheFactoryBean} based on the Spring application's
-	 * GemFire cache type (i.e. client or peer) preference specified via annotation.
+	 * Constructs a new, uninitialized instance of {@link CacheFactoryBean} based on the Spring application's
+	 * cache type preference (i.e. client or peer), which is expressed via the appropriate annotation.
 	 *
-	 * @param <T> Class type of the {@link CacheFactoryBean}.
-	 * @return a new instance of an appropriate {@link CacheFactoryBean} given the Spring application's
-	 * GemFire cache type preference (i.e client or peer) specified with the corresponding annotation
-	 * (e.g. {@link ClientCacheApplication} or {@link PeerCacheApplication}).
+	 * Use the {@link ClientCacheApplication} Annotation to construct a {@link ClientCache cache client} application.
+	 *
+	 * Use the {@link PeerCacheApplication} Annotation to construct a {@link Cache peer cache} application.
+	 *
+	 * @param <T> {@link Class} specific sub-type of the {@link CacheFactoryBean}.
+	 * @return a new instance of the appropriate {@link CacheFactoryBean} given the Spring application's
+	 * cache type preference (i.e client or peer),  (e.g. {@link ClientCacheApplication}
+	 * or {@link PeerCacheApplication}).
 	 * @see org.springframework.data.gemfire.client.ClientCacheFactoryBean
 	 * @see org.springframework.data.gemfire.CacheFactoryBean
 	 */
 	protected abstract <T extends CacheFactoryBean> T newCacheFactoryBean();
 
 	/**
-	 * Configures common GemFire cache configuration settings.
+	 * Configures the {@link CacheFactoryBean} with common cache configuration settings.
 	 *
-	 * @param <T> {@link Class} type of the {@link CacheFactoryBean}.
-	 * @param gemfireCache {@link CacheFactoryBean} instance to configure.
-	 * @return the given {@link CacheFactoryBean} with common configuration settings applied.
+	 * @param <T> {@link Class} specific sub-type of the {@link CacheFactoryBean}.
+	 * @param gemfireCache {@link CacheFactoryBean} to configure.
+	 * @return the given {@link CacheFactoryBean} with common cache configuration settings applied.
 	 * @see org.springframework.data.gemfire.client.ClientCacheFactoryBean
 	 * @see org.springframework.data.gemfire.CacheFactoryBean
 	 */
 	protected <T extends CacheFactoryBean> T configureCacheFactoryBean(T gemfireCache) {
+
 		gemfireCache.setBeanClassLoader(beanClassLoader());
 		gemfireCache.setBeanFactory(beanFactory());
 		gemfireCache.setCacheXml(cacheXml());
@@ -386,10 +446,9 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	/**
-	 * Returns the GemFire cache application {@link java.lang.annotation.Annotation} type pertaining to
-	 * this configuration.
+	 * Returns the cache application {@link java.lang.annotation.Annotation} type pertaining to this configuration.
 	 *
-	 * @return the GemFire cache application {@link java.lang.annotation.Annotation} type used by this application.
+	 * @return the cache application {@link java.lang.annotation.Annotation} type used by this application.
 	 * @see org.springframework.data.gemfire.config.annotation.CacheServerApplication
 	 * @see org.springframework.data.gemfire.config.annotation.ClientCacheApplication
 	 * @see org.springframework.data.gemfire.config.annotation.PeerCacheApplication
@@ -397,11 +456,11 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	protected abstract Class getAnnotationType();
 
 	/**
-	 * Returns the fully-qualified class name of the GemFire cache application {@link java.lang.annotation.Annotation}
-	 * type.
+	 * Returns the fully-qualified {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 *
-	 * @return the fully-qualified class name of the GemFire cache application {@link java.lang.annotation.Annotation}
-	 * type.
+	 * @return the fully-qualified {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 * @see java.lang.Class#getName()
 	 * @see #getAnnotationType()
 	 */
@@ -410,15 +469,19 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	/**
-	 * Returns the simple class name of the GemFire cache application {@link java.lang.annotation.Annotation} type.
+	 * Returns the simple {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 *
-	 * @return the simple class name of the GemFire cache application {@link java.lang.annotation.Annotation} type.
+	 * @return the simple {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 * @see java.lang.Class#getSimpleName()
 	 * @see #getAnnotationType()
 	 */
 	protected String getAnnotationTypeSimpleName() {
 		return getAnnotationType().getSimpleName();
 	}
+
+	// REVIEW JAVADOC FROM HERE
 
 	/**
 	 * Determines whether this is a GemFire {@link org.apache.geode.cache.server.CacheServer} application,
@@ -608,7 +671,7 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	protected String logLevel() {
-		return defaultIfNull(this.logLevel, DEFAULT_LOG_LEVEL);
+		return Optional.ofNullable(this.logLevel).orElse(DEFAULT_LOG_LEVEL);
 	}
 
 	/* (non-Javadoc) */
@@ -626,7 +689,7 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	protected Integer mcastPort() {
-		return (mcastPort != null ? mcastPort : DEFAULT_MCAST_PORT);
+		return Optional.ofNullable(mcastPort).orElse(DEFAULT_MCAST_PORT);
 	}
 
 	/* (non-Javadoc) */
@@ -635,7 +698,7 @@ public abstract class AbstractCacheConfiguration extends AbstractAnnotationConfi
 	}
 
 	protected String name() {
-		return (StringUtils.hasText(name) ? name : toString());
+		return Optional.ofNullable(this.name).filter(StringUtils::hasText).orElseGet(this::toString);
 	}
 
 	/* (non-Javadoc) */

@@ -31,7 +31,7 @@ import org.springframework.data.gemfire.client.ClientRegionFactoryBean;
  * @see org.springframework.data.gemfire.RegionFactoryBean
  * @see org.springframework.data.gemfire.client.ClientRegionFactoryBean
  * @see org.springframework.data.gemfire.config.annotation.EnableEntityDefinedRegions
- * @see org.springframework.data.gemfire.config.annotation.RegionConfigurerBeanPostProcessorConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.support.GemFireCacheTypeAwareRegionFactoryBean
  * @since 1.1.0
  */
 public interface RegionConfigurer {

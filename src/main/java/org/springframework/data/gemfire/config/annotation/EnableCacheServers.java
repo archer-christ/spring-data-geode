@@ -35,7 +35,6 @@ import org.springframework.context.annotation.Import;
  * @see org.apache.geode.cache.server.CacheServer
  * @see org.springframework.data.gemfire.config.annotation.AddCacheServersConfiguration
  * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurer
- * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnableCacheServer
  * @since 1.9.0
  */
@@ -43,7 +42,7 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import({ AddCacheServersConfiguration.class, CacheServerConfigurerBeanPostProcessorConfiguration.class })
+@Import(AddCacheServersConfiguration.class)
 @SuppressWarnings("unused")
 public @interface EnableCacheServers {
 

@@ -41,15 +41,18 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * The {@link EmbeddedServiceConfigurationSupport} class is an abstract base class supporting the configuration
- * of Pivotal GemFire and Apache Geode embedded services.
+ * The {@link EmbeddedServiceConfigurationSupport} class is an abstract base class supporting
+ * the configuration of Pivotal GemFire and Apache Geode embedded services.
  *
  * @author John Blum
  * @see java.util.Properties
  * @see org.springframework.beans.factory.BeanFactory
+ * @see org.springframework.beans.factory.config.AutowireCapableBeanFactory
+ * @see org.springframework.beans.factory.config.BeanDefinitionHolder
  * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
  * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
  * @see org.springframework.context.annotation.ImportBeanDefinitionRegistrar
+ * @see org.springframework.core.type.AnnotationMetadata
  * @see org.springframework.data.gemfire.config.annotation.AbstractCacheConfiguration
  * @see org.springframework.data.gemfire.config.annotation.support.AbstractAnnotationConfigSupport
  * @since 1.9.0
@@ -77,7 +80,7 @@ public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnota
 	@SuppressWarnings("unchecked")
 	protected <T extends AbstractCacheConfiguration> T cacheConfiguration() {
 		return Optional.ofNullable((T) this.cacheConfiguration)
-			.orElseThrow(() -> newIllegalStateException("AbstractCacheConfiguration was not properly configured"));
+			.orElseThrow(() -> newIllegalStateException("AbstractCacheConfiguration is required"));
 	}
 
 	/**
@@ -185,6 +188,7 @@ public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnota
 	 */
 	@SuppressWarnings("unchecked")
 	protected <T> T resolveBean(Class<T> beanType) {
+
 		BeanFactory beanFactory = beanFactory();
 
 		if (beanFactory instanceof AutowireCapableBeanFactory) {
@@ -219,8 +223,8 @@ public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnota
 	}
 
 	/**
-	 * Spring {@link BeanPostProcessor} used to process GemFire System properties defined as a Spring bean
-	 * in the Spring application context before initialization.
+	 * Spring {@link BeanPostProcessor} used to process before initialization Pivotal GemFire or Apache Geode
+	 * {@link Properties} defined as a bean in the Spring application context.
 	 *
 	 * @see org.springframework.beans.factory.config.BeanPostProcessor
 	 */
@@ -231,11 +235,11 @@ public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnota
 		private final Properties gemfireProperties;
 
 		/**
-		 * Construct an instance of the {@link GemFirePropertiesBeanPostProcessor} initialized with
-		 * the given GemFire {@link Properties}.
+		 * Constructs a new instance of the {@link GemFirePropertiesBeanPostProcessor} initialized with
+		 * the given GemFire/Geode {@link Properties}.
 		 *
-		 * @param gemfireProperties {@link Properties} used to configure GemFire.
-		 * @throws IllegalArgumentException if the {@link Properties} are null or empty.
+		 * @param gemfireProperties {@link Properties} used to configure Pivotal GemFire or Apache Geode.
+		 * @throws IllegalArgumentException if {@link Properties} are {@literal null} or empty.
 		 * @see java.util.Properties
 		 */
 		protected GemFirePropertiesBeanPostProcessor(Properties gemfireProperties) {
@@ -248,19 +252,12 @@ public abstract class EmbeddedServiceConfigurationSupport extends AbstractAnnota
 		 */
 		@Override
 		public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+
 			if (bean instanceof Properties && GEMFIRE_PROPERTIES_BEAN_NAME.equals(beanName)) {
 				Properties gemfirePropertiesBean = (Properties) bean;
 				gemfirePropertiesBean.putAll(gemfireProperties);
 			}
 
-			return bean;
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		@Override
-		public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
 			return bean;
 		}
 	}

@@ -27,9 +27,8 @@ import org.springframework.data.gemfire.server.CacheServerFactoryBean;
  * @author John Blum
  * @see org.apache.geode.cache.server.CacheServer
  * @see org.springframework.data.gemfire.config.annotation.CacheServerApplication
- * @see org.springframework.data.gemfire.config.annotation.EnableCacheServer
  * @see org.springframework.data.gemfire.config.annotation.EnableCacheServers
- * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurerBeanPostProcessorConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.EnableCacheServer
  * @see org.springframework.data.gemfire.server.CacheServerFactoryBean
  * @since 1.9.0
  */

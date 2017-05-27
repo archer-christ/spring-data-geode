@@ -27,7 +27,6 @@ import java.lang.annotation.Target;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.query.Index;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 
 /**
  * The {@link EnableIndexing} annotation marks a Spring {@link Configuration @Configuration} annotated application class
@@ -41,7 +40,6 @@ import org.springframework.context.annotation.Import;
  * @see org.springframework.data.gemfire.IndexFactoryBean
  * @see org.springframework.data.gemfire.config.annotation.IndexConfiguration
  * @see org.springframework.data.gemfire.config.annotation.IndexConfigurer
- * @see org.springframework.data.gemfire.config.annotation.IndexConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.search.lucene.LuceneIndexFactoryBean
  * @since 1.9.0
  */
@@ -49,7 +47,6 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import(IndexConfigurerBeanPostProcessorConfiguration.class)
 @SuppressWarnings({ "unused" })
 public @interface EnableIndexing {
 

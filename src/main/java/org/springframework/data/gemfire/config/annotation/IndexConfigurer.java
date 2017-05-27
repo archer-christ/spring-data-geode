@@ -32,7 +32,7 @@ import org.springframework.data.gemfire.search.lucene.LuceneIndexFactoryBean;
  * @see org.apache.geode.cache.query.Index
  * @see org.springframework.data.gemfire.IndexFactoryBean
  * @see org.springframework.data.gemfire.config.annotation.EnableIndexing
- * @see org.springframework.data.gemfire.config.annotation.IndexConfigurerBeanPostProcessorConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.IndexConfiguration
  * @see org.springframework.data.gemfire.search.lucene.LuceneIndexFactoryBean
  * @since 1.1.0
  */

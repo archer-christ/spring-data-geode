@@ -17,30 +17,25 @@
 package org.springframework.data.gemfire.config.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.apache.geode.cache.Cache;
-import org.apache.geode.cache.server.CacheServer;
-import org.apache.geode.cache.server.ClientSubscriptionConfig;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.gemfire.server.CacheServerFactoryBean;
+import org.springframework.data.gemfire.test.GemfireTestBeanPostProcessor;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 /**
- * Integration tests for {@link CacheServerConfigurerBeanPostProcessorConfiguration}.
+ * Integration tests for {@link CacheServerConfigurer}.
  *
  * @author John Blum
  * @see org.junit.Test
@@ -48,7 +43,6 @@ import org.springframework.test.context.junit4.SpringRunner;
  * @see org.apache.geode.cache.server.CacheServer
  * @see org.springframework.context.annotation.Configuration
  * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurer
- * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnableCacheServer
  * @see org.springframework.data.gemfire.config.annotation.EnableCacheServers
  * @see org.springframework.data.gemfire.server.CacheServerFactoryBean
@@ -59,7 +53,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 @RunWith(SpringRunner.class)
 @ContextConfiguration
 @SuppressWarnings("unused")
-public class CacheServerConfigurerBeanPostProcessorConfigurationIntegrationTests {
+public class CacheServerConfigurerIntegrationTests {
 
 	@Autowired
 	@Qualifier("configurerOne")
@@ -69,11 +63,7 @@ public class CacheServerConfigurerBeanPostProcessorConfigurationIntegrationTests
 	@Qualifier("configurerTwo")
 	private TestCacheServerConfigurer configurerTwo;
 
-	@Autowired
-	@Qualifier("configurerThree")
-	private TestCacheServerConfigurer configurerThree;
-
-	protected void assertCacheServerConfigurerCalled(TestCacheServerConfigurer configurer,
+	private void assertCacheServerConfigurerCalled(TestCacheServerConfigurer configurer,
 			String... cacheServerBeanNames) {
 
 		assertThat(configurer).isNotNull();
@@ -82,25 +72,19 @@ public class CacheServerConfigurerBeanPostProcessorConfigurationIntegrationTests
 	}
 
 	@Test
-	public void configurerOneCalledSuccessfully() {
-		assertCacheServerConfigurerCalled(configurerOne,
-			"marsServer", "saturnServer", "venusServer");
+	public void cacheServerConfigurerOneCalledSuccessfully() {
+		assertCacheServerConfigurerCalled(this.configurerOne,
+			"gemfireCacheServer", "marsServer", "saturnServer", "venusServer");
 	}
 
 	@Test
-	public void configurerTwoCalledSuccessfully() {
-		assertCacheServerConfigurerCalled(configurerTwo,
-			"marsServer", "saturnServer", "venusServer");
-	}
-
-	@Test
-	public void configurerThreeCalledSuccessfully() {
-		assertCacheServerConfigurerCalled(configurerThree,
-			"marsServer", "saturnServer", "venusServer");
+	public void cacheServerConfigurerTwoCalledSuccessfully() {
+		assertCacheServerConfigurerCalled(this.configurerTwo,
+			"gemfireCacheServer", "marsServer", "saturnServer", "venusServer");
 	}
 
 	@Configuration
-	@Import(CacheServerConfigurerBeanPostProcessorConfiguration.class)
+	@CacheServerApplication
 	@EnableCacheServers(servers = {
 		@EnableCacheServer(name = "marsServer"),
 		@EnableCacheServer(name = "saturnServer"),
@@ -109,19 +93,8 @@ public class CacheServerConfigurerBeanPostProcessorConfigurationIntegrationTests
 	static class TestConfiguration {
 
 		@Bean
-		Cache gemfireCache() {
-			Cache mockCache = mock(Cache.class);
-
-			when(mockCache.addCacheServer()).thenAnswer(invocation -> {
-				CacheServer mockCacheServer = mock(CacheServer.class);
-				ClientSubscriptionConfig mockClientSubscriptionConfig = mock(ClientSubscriptionConfig.class);
-
-				when(mockCacheServer.getClientSubscriptionConfig()).thenReturn(mockClientSubscriptionConfig);
-
-				return mockCacheServer;
-			});
-
-			return mockCache;
+		GemfireTestBeanPostProcessor testBeanPostProcessor() {
+			return new GemfireTestBeanPostProcessor();
 		}
 
 		@Bean
@@ -131,11 +104,6 @@ public class CacheServerConfigurerBeanPostProcessorConfigurationIntegrationTests
 
 		@Bean
 		TestCacheServerConfigurer configurerTwo() {
-			return new TestCacheServerConfigurer();
-		}
-
-		@Bean
-		TestCacheServerConfigurer configurerThree() {
 			return new TestCacheServerConfigurer();
 		}
 

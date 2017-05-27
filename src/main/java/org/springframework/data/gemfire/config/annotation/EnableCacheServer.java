@@ -44,14 +44,14 @@ import org.springframework.data.gemfire.server.SubscriptionEvictionPolicy;
  * @see org.apache.geode.cache.server.CacheServer
  * @see org.springframework.data.gemfire.config.annotation.AddCacheServerConfiguration
  * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurer
- * @see org.springframework.data.gemfire.config.annotation.CacheServerConfigurerBeanPostProcessorConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.EnableCacheServers
  * @since 1.9.0
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import({ AddCacheServerConfiguration.class, CacheServerConfigurerBeanPostProcessorConfiguration.class })
+@Import(AddCacheServerConfiguration.class)
 @SuppressWarnings("unused")
 public @interface EnableCacheServer {
 

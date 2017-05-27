@@ -17,31 +17,24 @@
 package org.springframework.data.gemfire.config.annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.apache.geode.cache.DiskStore;
-import org.apache.geode.cache.DiskStoreFactory;
-import org.apache.geode.cache.GemFireCache;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.gemfire.DiskStoreFactoryBean;
+import org.springframework.data.gemfire.test.GemfireTestBeanPostProcessor;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 /**
- * Integration tests for {@link DiskStoreConfigurerBeanPostProcessorConfiguration}.
+ * Integration tests for {@link DiskStoreConfigurer}.
  *
  * @author John Blum
  * @see org.junit.Test
@@ -51,8 +44,8 @@ import org.springframework.test.context.junit4.SpringRunner;
  * @see org.apache.geode.cache.GemFireCache
  * @see org.springframework.context.annotation.Configuration
  * @see org.springframework.data.gemfire.DiskStoreFactoryBean
+ * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfiguration
  * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfigurer
- * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnableDiskStore
  * @see org.springframework.data.gemfire.config.annotation.EnableDiskStores
  * @see org.springframework.test.context.ContextConfiguration
@@ -62,7 +55,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 @RunWith(SpringRunner.class)
 @ContextConfiguration
 @SuppressWarnings("unused")
-public class DiskStoreConfigurerBeanPostProcessorConfigurationIntegrationTests {
+public class DiskStoreConfigurerIntegrationTests {
 
 	@Autowired
 	@Qualifier("configurerOne")
@@ -72,33 +65,23 @@ public class DiskStoreConfigurerBeanPostProcessorConfigurationIntegrationTests {
 	@Qualifier("configurerTwo")
 	private TestDiskStoreConfigurer configurerTwo;
 
-	@Autowired
-	@Qualifier("configurerThree")
-	private TestDiskStoreConfigurer configurerThree;
-
-	protected void assertDiskStoreConfigurerCalled(TestDiskStoreConfigurer configurer, String... beanNames) {
+	private void assertDiskStoreConfigurerCalled(TestDiskStoreConfigurer configurer, String... beanNames) {
 		assertThat(configurer).isNotNull();
 		assertThat(configurer).hasSize(beanNames.length);
 		assertThat(configurer).contains(beanNames);
 	}
 
 	@Test
-	public void configurerOneCalledSuccessfully() {
-		assertDiskStoreConfigurerCalled(configurerOne, "cd", "floppy", "tape");
+	public void diskStoreConfigurerOneCalledSuccessfully() {
+		assertDiskStoreConfigurerCalled(this.configurerOne, "cd", "floppy", "tape");
 	}
 
 	@Test
-	public void configurerTwoCalledSuccessfully() {
-		assertDiskStoreConfigurerCalled(configurerTwo, "cd", "floppy", "tape");
+	public void diskStoreConfigurerTwoCalledSuccessfully() {
+		assertDiskStoreConfigurerCalled(this.configurerTwo, "cd", "floppy", "tape");
 	}
 
-	@Test
-	public void configurerThreeCalledSuccessfully() {
-		assertDiskStoreConfigurerCalled(configurerThree, "cd", "floppy", "tape");
-	}
-
-	@Configuration
-	@Import(DiskStoreConfigurerBeanPostProcessorConfiguration.class)
+	@PeerCacheApplication
 	@EnableDiskStores(diskStores = {
 		@EnableDiskStore(name = "cd"),
 		@EnableDiskStore(name = "floppy"),
@@ -107,23 +90,8 @@ public class DiskStoreConfigurerBeanPostProcessorConfigurationIntegrationTests {
 	static class TestConfiguration {
 
 		@Bean
-		GemFireCache gemfireCache() {
-			GemFireCache mockGemfireCache = mock(GemFireCache.class);
-
-			DiskStoreFactory mockDiskStoreFactory = mock(DiskStoreFactory.class);
-
-			when(mockGemfireCache.createDiskStoreFactory()).thenReturn(mockDiskStoreFactory);
-
-			when(mockDiskStoreFactory.create(anyString())).thenAnswer(invocation -> {
-				String name = invocation.getArgument(0);
-				DiskStore mockDiskStore = mock(DiskStore.class, name);
-
-				when(mockDiskStore.getName()).thenReturn(name);
-
-				return mockDiskStore;
-			});
-
-			return mockGemfireCache;
+		GemfireTestBeanPostProcessor testBeanPostProcessor() {
+			return new GemfireTestBeanPostProcessor();
 		}
 
 		@Bean
@@ -133,11 +101,6 @@ public class DiskStoreConfigurerBeanPostProcessorConfigurationIntegrationTests {
 
 		@Bean
 		TestDiskStoreConfigurer configurerTwo() {
-			return new TestDiskStoreConfigurer();
-		}
-
-		@Bean
-		TestDiskStoreConfigurer configurerThree() {
 			return new TestDiskStoreConfigurer();
 		}
 

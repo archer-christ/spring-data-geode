@@ -26,6 +26,8 @@ import org.springframework.data.gemfire.client.PoolFactoryBean;
  * @author John Blum
  * @see org.apache.geode.cache.client.Pool
  * @see org.springframework.data.gemfire.client.PoolFactoryBean
+ * @see org.springframework.data.gemfire.config.annotation.AddPoolConfiguration
+ * @see org.springframework.data.gemfire.config.annotation.AddPoolsConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnablePool
  * @see org.springframework.data.gemfire.config.annotation.EnablePools
  * @since 1.1.0

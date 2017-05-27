@@ -40,7 +40,6 @@ import org.springframework.core.annotation.AliasFor;
  * @see org.springframework.core.annotation.AliasFor
  * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfiguration
  * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfigurer
- * @see org.springframework.data.gemfire.config.annotation.DiskStoreConfigurerBeanPostProcessorConfiguration
  * @see org.springframework.data.gemfire.config.annotation.EnableDiskStores
  * @since 1.9.0
  */
@@ -48,7 +47,7 @@ import org.springframework.core.annotation.AliasFor;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import({ DiskStoreConfiguration.class, DiskStoreConfigurerBeanPostProcessorConfiguration.class })
+@Import(DiskStoreConfiguration.class)
 @SuppressWarnings({ "unused" })
 public @interface EnableDiskStore {
 

@@ -33,7 +33,6 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.expression.BeanFactoryAccessor;
 import org.springframework.context.expression.EnvironmentAccessor;
 import org.springframework.context.expression.MapAccessor;
-import org.springframework.core.convert.ConversionService;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
@@ -41,20 +40,19 @@ import org.springframework.expression.spel.support.StandardTypeLocator;
 import org.springframework.util.StringUtils;
 
 /**
- * The {@link AbstractAnnotationConfigSupport} class is a base class encapsulating functionality common to
- * all Annotations and configuration classes used to configure GemFire/Geode objects with Spring Data GemFire
- * and Spring Data Geode.
+ * The {@link AbstractAnnotationConfigSupport} class is an abstract base class encapsulating functionality
+ * common to all Annotations and configuration classes used to configure Pivotal GemFire/Apache Geode objects
+ * with Spring Data GemFire or Spring Data Geode.
  *
  * @author John Blum
  * @see java.lang.ClassLoader
  * @see org.springframework.beans.factory.BeanClassLoaderAware
  * @see org.springframework.beans.factory.BeanFactory
  * @see org.springframework.beans.factory.BeanFactoryAware
+ * @see org.springframework.beans.factory.InitializingBean
  * @see org.springframework.beans.factory.config.ConfigurableBeanFactory
  * @see org.springframework.beans.factory.support.AbstractBeanDefinition
- * @see org.springframework.beans.factory.support.BeanDefinitionBuilder
  * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
- * @see org.springframework.core.convert.ConversionService
  * @see org.springframework.expression.EvaluationContext
  * @since 1.9.0
  */
@@ -106,8 +104,14 @@ public abstract class AbstractAnnotationConfigSupport
 		this.evaluationContext = newEvaluationContext();
 	}
 
-	/* non-Javadoc */
-	EvaluationContext newEvaluationContext() {
+	/**
+	 * Constructs, configures and initializes a new instance of an {@link EvaluationContext}.
+	 *
+	 * @return a new {@link EvaluationContext}.
+	 * @see org.springframework.expression.EvaluationContext
+	 * @see #beanFactory()
+	 */
+	protected EvaluationContext newEvaluationContext() {
 		StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
 
 		evaluationContext.addPropertyAccessor(new BeanFactoryAccessor());
@@ -115,32 +119,28 @@ public abstract class AbstractAnnotationConfigSupport
 		evaluationContext.addPropertyAccessor(new MapAccessor());
 		evaluationContext.setTypeLocator(new StandardTypeLocator(beanClassLoader()));
 
-		BeanFactory beanFactory = beanFactory();
-
-		if (beanFactory instanceof ConfigurableBeanFactory) {
-			ConversionService conversionService = ((ConfigurableBeanFactory) beanFactory).getConversionService();
-
-			if (conversionService != null) {
-				evaluationContext.setTypeConverter(new StandardTypeConverter(conversionService));
-			}
-		}
+		Optional.ofNullable(beanFactory())
+			.filter(beanFactory -> beanFactory instanceof ConfigurableBeanFactory)
+			.map(beanFactory -> ((ConfigurableBeanFactory) beanFactory).getConversionService())
+			.ifPresent(conversionService ->
+				evaluationContext.setTypeConverter(new StandardTypeConverter(conversionService)));
 
 		return evaluationContext;
 	}
 
 	/**
-	 * Returns the configured GemFire cache application annotation type
-	 * (e.g. {@link org.springframework.data.gemfire.config.annotation.ClientCacheApplication}
-	 * or {@link org.springframework.data.gemfire.config.annotation.PeerCacheApplication}.
+	 * Returns the cache application {@link java.lang.annotation.Annotation} type pertaining to this configuration.
 	 *
-	 * @return an {@link Class annotation} defining the GemFire cache application type.
+	 * @return the cache application {@link java.lang.annotation.Annotation} type used by this application.
 	 */
 	protected abstract Class getAnnotationType();
 
 	/**
-	 * Returns the fully-qualified class name of the GemFire cache application annotation type.
+	 * Returns the fully-qualified {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 *
-	 * @return a fully-qualified class name of the GemFire cache application annotation type.
+	 * @return the fully-qualified {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 * @see java.lang.Class#getName()
 	 * @see #getAnnotationType()
 	 */
@@ -149,9 +149,11 @@ public abstract class AbstractAnnotationConfigSupport
 	}
 
 	/**
-	 * Returns the simple class name of the GemFire cache application annotation type.
+	 * Returns the simple {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 *
-	 * @return the simple class name of the GemFire cache application annotation type.
+	 * @return the simple {@link Class#getName() class name} of the cache application
+	 * {@link java.lang.annotation.Annotation} type.
 	 * @see java.lang.Class#getSimpleName()
 	 * @see #getAnnotationType()
 	 */
@@ -175,7 +177,7 @@ public abstract class AbstractAnnotationConfigSupport
 	 * @see #setBeanClassLoader(ClassLoader)
 	 */
 	protected ClassLoader beanClassLoader() {
-		return beanClassLoader;
+		return this.beanClassLoader;
 	}
 
 	/**
@@ -195,7 +197,7 @@ public abstract class AbstractAnnotationConfigSupport
 	 */
 	protected BeanFactory beanFactory() {
 		return Optional.ofNullable(this.beanFactory)
-			.orElseThrow(() -> newIllegalStateException("BeanFactory was not properly configured"));
+			.orElseThrow(() -> newIllegalStateException("BeanFactory is required"));
 	}
 
 	/**
@@ -207,22 +209,40 @@ public abstract class AbstractAnnotationConfigSupport
 	}
 
 	/**
-	 * Registers the given {@link BeanDefinition} with the {@link BeanDefinitionRegistry} using a generated bean name.
+	 * Registers the {@link AbstractBeanDefinition} with the {@link BeanDefinitionRegistry} using a generated bean name.
 	 *
 	 * @param beanDefinition {@link AbstractBeanDefinition} to register.
-	 * @return the given {@link BeanDefinition}.
+	 * @return the given {@link AbstractBeanDefinition}.
+	 * @see org.springframework.beans.factory.BeanFactory
 	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition
 	 * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
-	 * @see org.springframework.beans.factory.support.BeanDefinitionReaderUtils
-	 * 	#registerWithGeneratedName(AbstractBeanDefinition, BeanDefinitionRegistry)
+	 * @see org.springframework.beans.factory.support.BeanDefinitionReaderUtils#registerWithGeneratedName(AbstractBeanDefinition, BeanDefinitionRegistry)
 	 * @see #beanFactory()
 	 */
 	protected AbstractBeanDefinition register(AbstractBeanDefinition beanDefinition) {
+
 		BeanFactory beanFactory = beanFactory();
 
-		if (beanFactory instanceof BeanDefinitionRegistry) {
-			BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, ((BeanDefinitionRegistry) beanFactory));
-		}
+		return (beanFactory instanceof BeanDefinitionRegistry
+			? register(beanDefinition, (BeanDefinitionRegistry) beanFactory)
+			: beanDefinition);
+	}
+
+	/**
+	 * Registers the {@link AbstractBeanDefinition} with the {@link BeanDefinitionRegistry} using a generated bean name.
+	 *
+	 * @param beanDefinition {@link AbstractBeanDefinition} to register.
+	 * @param registry {@link BeanDefinitionRegistry} used to register the {@link AbstractBeanDefinition}.
+	 * @return the given {@link AbstractBeanDefinition}.
+	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition
+	 * @see org.springframework.beans.factory.support.BeanDefinitionRegistry
+	 * @see org.springframework.beans.factory.support.BeanDefinitionReaderUtils#registerWithGeneratedName(AbstractBeanDefinition, BeanDefinitionRegistry)
+	 */
+	protected AbstractBeanDefinition register(AbstractBeanDefinition beanDefinition, BeanDefinitionRegistry registry) {
+
+		Optional.ofNullable(registry).ifPresent(it ->
+			BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, it)
+		);
 
 		return beanDefinition;
 	}
